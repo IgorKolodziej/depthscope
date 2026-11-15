@@ -1,0 +1,2 @@
+class Overload(RuntimeError):
+    pass
