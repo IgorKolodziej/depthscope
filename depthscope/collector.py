@@ -1,4 +1,4 @@
-"""Collect Kraken WebSocket events in receipt order."""
+"""Public WebSocket capture with one ordered Kafka stream and explicit ticks."""
 
 import asyncio
 import json
@@ -8,10 +8,13 @@ import time
 from .feeds import ASSETS, NS
 from .loadguard import Overload
 
-URLS = {"kraken": "wss://ws.kraken.com/v2"}
+URLS = {"coinbase": "wss://ws-feed.exchange.coinbase.com", "kraken": "wss://ws.kraken.com/v2"}
 
 
 def subscriptions(venue):
+    if venue == "coinbase":
+        return [{"type": "subscribe", "product_ids": [f"{asset}-USD" for asset in ASSETS],
+                 "channels": ["level2_batch", "matches", "heartbeat", {"name": "status"}]}]
     symbols = [f"{asset}/USD" for asset in ASSETS]
     return [{"method": "subscribe", "params": dict(channel="book", symbol=symbols, depth=1000)},
             {"method": "subscribe", "params": dict(channel="trade", symbol=symbols, snapshot=False)},
