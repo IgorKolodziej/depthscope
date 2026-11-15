@@ -3,8 +3,6 @@
 import json
 from decimal import Decimal
 
-from .book import verify_kraken_snapshot
-
 VENUES = ("kraken",)
 ASSETS = ("BTC", "ETH")
 NS = 1_000_000_000
@@ -32,8 +30,6 @@ def decode(venue, payload):
             if asset not in ASSETS:
                 continue
             if channel == "book":
-                if kind == "snapshot":
-                    verify_kraken_snapshot(row)
                 changes = [(bid, level["price"], level["qty"])
                            for bid, side in ((True, "bids"), (False, "asks"))
                            for level in row.get(side, ())]
