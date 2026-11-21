@@ -1,0 +1,41 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: Arial
+    fontSize: 22px
+    primaryTextColor: '#142c38'
+    lineColor: '#365565'
+    edgeLabelBackground: '#ffffff'
+  flowchart:
+    htmlLabels: false
+    curve: linear
+    wrappingWidth: 430
+    nodeSpacing: 38
+    rankSpacing: 21
+    padding: 10
+---
+flowchart TB
+    coinbase["Coinbase Exchange<br/>Book updates and trades"] --> kafka
+    kraken["Kraken<br/>Book updates and trades"] --> kafka
+
+    kafka["1. Collect, timestamp and append events<br/>Apache Kafka raw event log"] --> processor
+    kafka --> archive["Parquet event archive<br/>SeaweedFS object storage"]
+    processor["2. Reconstruct and validate books in C<br/>1 s records + planned rolling features"] --> forecast
+    processor --> clickhouse
+    forecast["3. Forecast, score delayed labels and learn<br/>River: predict every 5 s, score after 60 s"] --> clickhouse
+    clickhouse["ClickHouse<br/>Frames and results"] --> dashboard
+    dashboard["4. Live views and research comparisons<br/>Streamlit + Plotly"]
+
+    archive -.-> kafka
+    archive -.-> evaluation["Batch replay and<br/>policy evaluation"]
+    evaluation -.-> clickhouse
+
+    classDef input fill:#e2f1f4,stroke:#22778b,stroke-width:2px
+    classDef process fill:#ffffff,stroke:#8398a1,stroke-width:2px
+    classDef store fill:#eaf3ee,stroke:#42775d,stroke-width:2px
+    classDef planned fill:#ffffff,stroke:#8398a1,stroke-width:2px,stroke-dasharray:6 4
+    class coinbase,kraken,kafka input
+    class processor process
+    class archive,clickhouse store
+    class forecast,dashboard,evaluation planned

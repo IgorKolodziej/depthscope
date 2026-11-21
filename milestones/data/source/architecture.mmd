@@ -1,0 +1,28 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: Arial
+    fontSize: 22px
+    primaryTextColor: '#142c38'
+    lineColor: '#365565'
+  flowchart:
+    htmlLabels: false
+    curve: linear
+    wrappingWidth: 260
+    nodeSpacing: 32
+    rankSpacing: 28
+    padding: 12
+---
+flowchart LR
+    exchanges["Coinbase + Kraken<br/>WebSocket collectors"] --> kafka["Kafka<br/>Raw stream"]
+    kafka --> writer["Batch writer"] --> raw["ClickHouse<br/>Raw events"]
+    kafka --> validation["C book validation<br/>Kafka frames every 1 s"] --> books["ClickHouse<br/>Book levels and status"]
+    kafka --> archiver["Parquet archiver"] --> parquet["SeaweedFS<br/>Parquet and manifests"]
+
+    classDef input fill:#e2f1f4,stroke:#22778b,stroke-width:2px
+    classDef process fill:#ffffff,stroke:#8398a1,stroke-width:2px
+    classDef store fill:#eaf3ee,stroke:#42775d,stroke-width:2px
+    class exchanges,kafka input
+    class writer,validation,archiver process
+    class raw,books,parquet store

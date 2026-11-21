@@ -1,0 +1,73 @@
+{
+  "verified_at": "2026-11-21T20:45:59.270854+00:00",
+  "interval_start": "2026-11-21T20:43:46+00:00",
+  "interval_end": "2026-11-21T20:45:45+00:00",
+  "seconds": 120,
+  "raw": [
+    {
+      "venue": "",
+      "messages": 0,
+      "connects": 0,
+      "disconnects": 0,
+      "payload_bytes": 0,
+      "ticks": 120
+    },
+    {
+      "venue": "coinbase",
+      "messages": 4538,
+      "connects": 0,
+      "disconnects": 0,
+      "payload_bytes": 2957733,
+      "ticks": 0
+    },
+    {
+      "venue": "kraken",
+      "messages": 20547,
+      "connects": 0,
+      "disconnects": 0,
+      "payload_bytes": 3971793,
+      "ticks": 0
+    }
+  ],
+  "frames": [
+    {
+      "venue": "coinbase",
+      "asset": "BTC",
+      "frames": 120,
+      "unique_seconds": 120,
+      "valid": 120,
+      "analytics_fields": 0
+    },
+    {
+      "venue": "coinbase",
+      "asset": "ETH",
+      "frames": 120,
+      "unique_seconds": 120,
+      "valid": 120,
+      "analytics_fields": 0
+    },
+    {
+      "venue": "kraken",
+      "asset": "BTC",
+      "frames": 120,
+      "unique_seconds": 120,
+      "valid": 120,
+      "analytics_fields": 0
+    },
+    {
+      "venue": "kraken",
+      "asset": "ETH",
+      "frames": 120,
+      "unique_seconds": 120,
+      "valid": 120,
+      "analytics_fields": 0
+    }
+  ],
+  "max_combined_messages_per_second": 389.3,
+  "max_reported_lag_seconds": {
+    "processor": 4,
+    "archive": 3,
+    "frames": 1,
+    "raw_clickhouse": 3
+  }
+}

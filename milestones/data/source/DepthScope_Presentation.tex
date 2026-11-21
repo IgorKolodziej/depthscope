@@ -1,0 +1,113 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,booktabs,tabularx,array,tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\title{DepthScope}
+\subtitle{Data acquisition and pre-processing}
+\author[DepthScope team]{Igor Kołodziej \and Adam Kaniasty \and Mateusz Iwaniuk \and Hubert Kowalski}
+\date{21 November 2026}
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Data sets and available fields}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}P{19mm}P{12mm}LL@{}}
+\toprule
+\textbf{Data set} & \textbf{Format} & \textbf{Available fields} & \textbf{Planned use}\\
+\midrule
+Book events & JSON & Price, quantity, side, symbol, exchange time; Kraken checksum. & Depth, spread and imbalance inputs for liquidity regression.\\\addlinespace
+Trades & JSON & Trade ID, price, quantity, timestamp and source-side information. & Trade-flow and volume inputs.\\\addlinespace
+Metadata & JSON & Trading status, price/quantity increments, heartbeat and connection state. & Data-quality filtering and valid market selection.\\\addlinespace
+Fee schedule & CSV & Venue, effective/observed date, maker/taker bps, tier and source URL. & Later execution-cost scenarios.\\
+\bottomrule
+\end{tabularx}\par
+\medskip
+Original messages are retained in ClickHouse and Parquet. Normalized acquisition records contain validated book levels and instrument metadata.
+\end{frame}
+
+\begin{frame}{Sources and WebSocket channels}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}P{17mm}P{26mm}LP{23mm}@{}}
+\toprule
+\textbf{Venue} & \textbf{Channel} & \textbf{Message content} & \textbf{Arrival}\\
+\midrule
+Coinbase & \texttt{level2\_batch} & Snapshot and absolute book-level changes. & 50 ms batches when present\\
+Coinbase & \texttt{matches} & Executed price, size, trade ID and time. & Event driven\\
+Coinbase & \texttt{heartbeat} & Last trade ID and feed continuity information. & Every second\\
+Coinbase & \texttt{status} & Market flags and instrument increments. & Periodic\\
+\midrule
+Kraken v2 & \texttt{book} & Source levels, symbol, time and CRC32; depth 1,000 per side. & Event driven\\
+Kraken v2 & \texttt{trade} & Trade ID, side, price, quantity and time. & Event driven\\
+Kraken v2 & \texttt{instrument} & Trading status and instrument increments. & Snapshot + updates\\
+Kraken v2 & \texttt{heartbeat}, \texttt{status} & Feed and venue health. & Control messages\\
+\bottomrule
+\end{tabularx}\par\vspace{2mm}
+Both feeds cover BTC/USD and ETH/USD. One message may contain several changes or trades.
+\end{frame}
+
+\begin{frame}{Data acquisition and storage}
+\centering
+\includegraphics[width=\linewidth]{source/architecture.pdf}\par\medskip
+{\small Fee CSV $\rightarrow$ Python fee loader}
+\end{frame}
+
+\begin{frame}{Measured inflow and data quality}
+\small
+\begin{tabularx}{\linewidth}{@{}Lrrr@{}}
+\toprule
+\textbf{Venue} & \textbf{Messages} & \textbf{Mean msg/s} & \textbf{Payload kB/s}\\
+\midrule
+Coinbase Exchange & 4,538 & 37.82 & 24.6\\
+Kraken Spot v2 & 20,547 & 171.22 & 33.1\\
+\bottomrule
+\end{tabularx}\par
+\smallskip
+{\footnotesize Sample of 120 seconds on 21 November 2026, 20:43:46--20:45:45 UTC. Rates combine BTC, ETH and all subscribed channels.}
+\medskip
+\begin{itemize}
+\item Four books each produced 120 valid records. Eight fixture tests passed, including archive integrity and fresh-snapshot startup.
+\item Checks cover absolute quantities, book ordering, Kraken CRC32, Coinbase heartbeats and trading status.
+\item Internal trade-ID gaps and a missing initial snapshot need stronger detection. The sample gives a short-window capacity observation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Planned rolling features and forecast timing}
+\centering
+\input{source/timing.tex}
+\vspace{2mm}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}P{32mm}P{16mm}L@{}}
+\toprule
+\textbf{Step} & \textbf{Cadence} & \textbf{Meaning}\\
+\midrule
+Acquisition (current) & Every 1 s & Save the current validated book and metadata.\\
+Features (planned) & Every 1 s & Refresh a window of the last 60 valid samples. For example, sum trade volume or estimate price volatility in that window.\\
+Forecasts (planned) & Every 5 s & Use the current features to predict liquidity 60 seconds ahead. Score the saved forecast when its target arrives, then learn.\\
+\bottomrule
+\end{tabularx}\par
+\smallskip
+Rolling features summarize this moving window. At $t+1$ s, drop the oldest sample and add the newest. The window keeps 60 samples. The first full window needs 60 consecutive valid acquisition records.
+\end{frame}
+
+\begin{frame}{Follow-up work}
+\small
+\begin{tabularx}{\linewidth}{@{}P{29mm}L@{}}
+\toprule
+\textbf{Area} & \textbf{Further work}\\
+\midrule
+Data transformations & Extend source validation and build rolling depth, spread, imbalance, trade-flow and volatility features from the market streams.\\\addlinespace[3mm]
+Analytical module & Develop 60-second liquidity regression, compare candidate models with persistence and EWMA, and evaluate them through chronological replay.\\\addlinespace[3mm]
+Visualizations & Build Streamlit/Plotly views of venue liquidity, forecasts, observed outcomes and data quality, with asset and trade-side selection.\\
+\bottomrule
+\end{tabularx}
+\end{frame}
+\end{document}

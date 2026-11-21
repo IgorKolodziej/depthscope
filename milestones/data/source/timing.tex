@@ -1,0 +1,14 @@
+\usebeamercolor{structure}
+\begin{tikzpicture}[x=0.96cm,y=1cm,font=\footnotesize,
+  flow/.style={-{Stealth[length=1.8mm]},draw=structure.fg,line width=0.8pt}]
+\fill[structure.fg!10] (0,0.35) rectangle (6,1.1);
+\node[align=center] at (2.85,0.72) {History at $t$\\last 60 valid one-second samples};
+\draw[structure.fg,thick] (0,0)--(12.2,0);
+\foreach \x in {0,0.6,...,5.4}{\draw[structure.fg] (\x,-0.07)--(\x,0.07);}
+\draw[thick] (6,-0.13)--(6,1.2);
+\draw[thick] (12,-0.13)--(12,0.22);
+\node[below,align=center] at (0,-0.13) {$t-59$ s\\oldest sample};
+\node[below,align=center] at (6,-0.13) {$t$\\features and forecast};
+\node[below,align=center] at (12,-0.13) {$t+60$ s\\observed target};
+\draw[flow] (6.15,0.7)--node[above]{60-second forecast horizon}(11.85,0.7);
+\end{tikzpicture}

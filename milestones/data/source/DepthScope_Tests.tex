@@ -1,0 +1,74 @@
+\documentclass[10pt,a4paper]{article}
+\input{source/article-style.tex}
+\hypersetup{pdftitle={DepthScope Data Milestone Tests},pdfauthor={DepthScope team}}
+\begin{document}
+\doctitle{Functional and data-quality tests}
+
+The results below were captured on 21 November 2026. Eight deterministic tests exercise acquisition, validation, archiving and load control with synthetic fixtures. A separate live run checks real source messages and storage. The environment used Python 3.12.10 and Docker Compose v2.39.1.
+
+\section{Source handling and validation}
+\small
+\begin{tabularx}{\linewidth}{@{}P{7mm}P{25mm}LLL@{}}
+\toprule
+\textbf{ID} & \textbf{Objective} & \textbf{Steps} & \textbf{Expected result} & \textbf{Actual result}\\
+\midrule
+D01 & Absolute quantities and trade independence & Load a source snapshot, apply a trade, delete one ask and replace another quantity. & Trade leaves depth intact. The zero-quantity level disappears. Other levels keep their quantities and order. & PASS. The resulting asks are $(1000.5,0.25)$ and $(1001.01,20)$.\\\addlinespace
+D02 & Disconnect and snapshot recovery & Load a snapshot, disconnect, apply an incremental update, then load a new snapshot. & An incremental update alone cannot restore a usable book. A fresh snapshot restores valid status. & PASS. The unavailable record contains no usable asks; the fresh snapshot restores valid status.\\\addlinespace
+D03 & Kraken CRC32 and depth truncation & Apply a valid fixture with subscribed depth two, inspect the retained levels, then apply an incorrect checksum. & Only the best two levels on each side remain. A bad checksum raises an error and invalidates the book. & PASS. Retained levels match the fixture. A checksum mismatch clears the usable book.\\\addlinespace
+D04 & Market trading status & Load a valid snapshot and publish a cancel-only status message. & Acquisition status changes and the unusable book is suppressed. & PASS. Status is \texttt{market\_cancel\_only}; asks are empty.\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\medskip
+Actual results are recorded in \texttt{evidence/unit-tests.txt}. The test names in that log map directly to the objectives above.
+
+\newpage
+\section{Archive, batch input and load control}
+\small
+\begin{tabularx}{\linewidth}{@{}P{7mm}P{25mm}LLL@{}}
+\toprule
+\textbf{ID} & \textbf{Objective} & \textbf{Steps} & \textbf{Expected result} & \textbf{Actual result}\\
+\midrule
+D05 & Parquet archive integrity & Archive a snapshot, an update and a clock tick. Read the Parquet objects and inspect their manifest. & Raw payloads and offsets are unchanged. Compression is Zstandard; partition and manifest bounds match the input. & PASS. All three events, metadata, offsets and bounds match the fixtures.\\\addlinespace
+D06 & Effective fee selection & Load a two-venue CSV fixture and query immediately before and at a scheduled rate change. & Coinbase taker fee changes from 6 to 5 bps exactly at second 60. Kraken remains at 4 bps. & PASS. Selected values match both boundaries. The fixture rates are synthetic.\\\addlinespace
+D07 & Sustained lag detection & Supply fresh progress for every stage except the archive. Sample three times after the startup grace period. & Persistent archive lag triggers \texttt{Overload} on the third threshold breach. & PASS. The third sample raises the expected exception.\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\medskip
+All eight fixture tests passed, including the startup check described as D09 below. Quality checks cover absolute level semantics, checksum integrity, market-status gating and archive integrity.
+
+\section{Recorded test commands}
+\begin{verbatim}
+make test
+ruff check depthscope tests scripts
+docker compose config --quiet
+python3 scripts/verify_data.py
+\end{verbatim}
+
+The verification script saves actual results in the evidence directory. The observed live interval is listed on the next page so that the measured results can be matched to the saved records.
+
+\newpage
+\section{Live acquisition and service checks}
+The live sample covers 21 November 2026, 20:43:46--20:45:45 UTC.\par
+
+\small
+\begin{tabularx}{\linewidth}{@{}P{7mm}P{25mm}LLL@{}}
+\toprule
+\textbf{ID} & \textbf{Objective} & \textbf{Steps} & \textbf{Expected result} & \textbf{Actual result}\\
+\midrule
+D08 & Live acquisition & Run the Compose stack and query source messages and normalized records over the 120-second interval. & Both exchanges supply data and all four books have a continuous record sequence. & PASS. Coinbase supplied 4,538 messages and Kraken 20,547. Every book produced 120 valid records.\\\addlinespace
+D09 & Fresh snapshots on startup & Start the processor with mocked transport, allow one poll, then stop it. Inspect the subscription and resync requests. & Consume the current raw stream and request fresh snapshots from both venues. Close resources on exit. & PASS. The reader tails raw events, both requests are sent and reader/processor are closed.\\\addlinespace
+D10 & Fee source loading & Load \texttt{data/fees.csv} at \texttt{2026-11-21T12:00:00Z}. & Select the latest effective standard taker rate for both venues. & PASS. Coinbase is 60 bps and Kraken is 80 bps.\\\addlinespace
+D11 & Configuration and schema & Validate Compose and lint, then create a fresh acquisition table and insert one record. & Checks succeed. The table has run, kind, second, venue, asset and payload fields. & PASS. The six fields match the expected schema and the inserted row is readable.\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\medskip
+\texttt{evidence/live-summary.json} records the interval, source counts and maximum lag. The collector log, unit-test results, fee-loader output and schema result are stored beside it.
+
+The sample verifies the stated interval. Internal trade-ID gaps, a missing initial snapshot and crash/retry ordering need broader fault tests. Historical replay and processor checkpoints are planned for later work. Long-run throughput and later model accuracy are outside these test results.
+\end{document}

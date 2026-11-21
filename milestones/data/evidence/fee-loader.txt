@@ -1,0 +1,3 @@
+UTC 2026-11-21T20:45:59.270854+00:00
+$ /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 -m depthscope fees --path data/fees.csv --at 2026-11-21T12:00:00Z
+{"coinbase": 60.0, "kraken": 80.0}

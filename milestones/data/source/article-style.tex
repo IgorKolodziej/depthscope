@@ -1,0 +1,32 @@
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=22mm,top=19mm,bottom=20mm]{geometry}
+\usepackage{microtype,booktabs,tabularx,array,fancyhdr,titlesec,tikz}
+\usepackage[hidelinks]{hyperref}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\definecolor{ink}{HTML}{162B38}
+\definecolor{teal}{HTML}{087F8C}
+\definecolor{muted}{HTML}{52636E}
+\color{ink}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\titleformat{\section}{\large\sffamily\bfseries\color{ink}}{\thesection}{0.65em}{}
+\titlespacing*{\section}{0pt}{11pt}{5pt}
+\titleformat{\subsection}{\normalsize\sffamily\bfseries}{\thesubsection}{0.65em}{}
+\titlespacing*{\subsection}{0pt}{7pt}{3pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[L]{\footnotesize\color{muted}DepthScope \enspace|\enspace Data milestone \enspace|\enspace 21 November 2026}
+\fancyfoot[R]{\footnotesize\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.3pt}
+\newcommand{\doctitle}[1]{%
+  {\LARGE\sffamily\bfseries DepthScope}\par
+  {\large\sffamily #1}\par
+  {\small Igor Kołodziej, Adam Kaniasty, Mateusz Iwaniuk, Hubert Kowalski\hfill 21 November 2026}\par
+  \vspace{4pt}}

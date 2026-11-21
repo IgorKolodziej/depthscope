@@ -1,0 +1,16 @@
+UTC 2026-11-21T20:45:59.270854+00:00
+$ make test
+python3 -m unittest discover -s tests -v
+test_absolute_updates_and_trade_independence (test_data.BookTests.test_absolute_updates_and_trade_independence) ... ok
+test_gap_suppresses_book_until_new_snapshot (test_data.BookTests.test_gap_suppresses_book_until_new_snapshot) ... ok
+test_kraken_checksum_truncation_and_bad_update (test_data.BookTests.test_kraken_checksum_truncation_and_bad_update) ... ok
+test_market_halt_suppresses_book (test_data.BookTests.test_market_halt_suppresses_book) ... ok
+test_parquet_archive_preserves_raw_events (test_data.BookTests.test_parquet_archive_preserves_raw_events) ... ok
+test_acquisition_start_requests_fresh_source_books (test_data.DataInputTests.test_acquisition_start_requests_fresh_source_books) ... ok
+test_fee_schedule_switches_at_the_effective_second (test_data.DataInputTests.test_fee_schedule_switches_at_the_effective_second) ... ok
+test_stop_on_sustained_lag (test_data.DataInputTests.test_stop_on_sustained_lag) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.394s
+
+OK
