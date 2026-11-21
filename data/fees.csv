@@ -1,0 +1,3 @@
+venue,effective_utc,maker_bps,taker_bps,observed_utc,tier,source_url
+coinbase,2026-11-21T00:00:00Z,40,60,2026-11-21T00:00:00Z,0K-10K trailing 30-day USD volume,https://help.coinbase.com/en/exchange/trading-and-funding/exchange-fees
+kraken,2026-11-21T00:00:00Z,40,80,2026-11-21T00:00:00Z,Tier 1 standard spot,https://www.kraken.com/pro/fees
