@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!Makefile
+!requirements.txt
+!depthscope/
+!depthscope/**
+**/__pycache__

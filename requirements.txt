@@ -1,1 +1,4 @@
+boto3==1.40.45
+confluent-kafka==2.11.1
+pyarrow==21.0.0
 websockets==15.0.1
