@@ -1,4 +1,4 @@
-"""Receipt-time normalization and validation of live acquisition events."""
+"""Receipt-time processing shared by live ingestion and historical replay."""
 
 from .book import SCALE, Book, fixed, load_library
 from .feeds import ASSETS, NS, VENUES, decode
@@ -111,3 +111,22 @@ class Processor:
         else:
             raise ValueError(f"unknown event kind {kind}")
         return None
+
+    def checkpoint(self):
+        markets = []
+        for (venue, asset), market in self.markets.items():
+            state = {name: value for name, value in vars(market).items() if name != "book"}
+            markets.append(dict(venue=venue, asset=asset, book=market.book.checkpoint(), state=state))
+        return dict(version=3, receipt_ns=self.receipt_ns, second=self.second, markets=markets)
+
+    def restore(self, checkpoint):
+        if checkpoint["version"] not in (1, 2, 3):
+            raise ValueError("unsupported checkpoint version")
+        for row in checkpoint["markets"]:
+            market = self.markets[(row["venue"], row["asset"])]
+            market.book.restore(row["book"])
+            state = dict(row["state"])
+            for field in ("last_seen", "last_trade", "expected_trade", "instrument"):
+                if field in state:
+                    setattr(market, field, state[field])
+        self.receipt_ns, self.second = checkpoint["receipt_ns"], checkpoint["second"]

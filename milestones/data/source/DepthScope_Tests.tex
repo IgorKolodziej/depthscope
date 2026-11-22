@@ -4,7 +4,7 @@
 \begin{document}
 \doctitle{Functional and data-quality tests}
 
-The results below were captured on 21 November 2026. Eight deterministic tests exercise acquisition, validation, archiving and load control with synthetic fixtures. A separate live run checks real source messages and storage. The environment used Python 3.12.10 and Docker Compose v2.39.1.
+Nine deterministic tests exercise acquisition, validation, archiving, replay and load control with synthetic fixtures. A Compose run checks real source messages, storage and historical reprocessing. The environment used Python 3.12.10 and Docker Compose v2.39.1.
 
 \section{Source handling and validation}
 \small
@@ -32,19 +32,20 @@ Actual results are recorded in \texttt{evidence/unit-tests.txt}. The test names 
 \midrule
 D05 & Parquet archive integrity & Archive a snapshot, an update and a clock tick. Read the Parquet objects and inspect their manifest. & Raw payloads and offsets are unchanged. Compression is Zstandard; partition and manifest bounds match the input. & PASS. All three events, metadata, offsets and bounds match the fixtures.\\\addlinespace
 D06 & Effective fee selection & Load a two-venue CSV fixture and query immediately before and at a scheduled rate change. & Coinbase taker fee changes from 6 to 5 bps exactly at second 60. Kraken remains at 4 bps. & PASS. Selected values match both boundaries. The fixture rates are synthetic.\\\addlinespace
-D07 & Sustained lag detection & Supply fresh progress for every stage except the archive. Sample three times after the startup grace period. & Persistent archive lag triggers \texttt{Overload} on the third threshold breach. & PASS. The third sample raises the expected exception.\\
+D07 & Sustained lag detection & Supply fresh progress for every stage except the archive. Sample three times after the startup grace period. & Persistent archive lag triggers \texttt{Overload} on the third threshold breach. & PASS. The third sample raises the expected exception.\\\addlinespace
+D08 & Checkpoint and replay & Save book state, archive events and restore into a new processor. Repeat with a missing archive batch. & Replay reproduces the fixture. An offset gap raises an error. & PASS. All replayed frames match. A missing batch raises an offset-gap error.\\
 \bottomrule
 \end{tabularx}
 \normalsize
 
 \medskip
-All eight fixture tests passed, including the startup check described as D09 below. Quality checks cover absolute level semantics, checksum integrity, market-status gating and archive integrity.
+All nine fixture tests passed, including the startup check described below.
 
 \section{Recorded test commands}
 \begin{verbatim}
 make test
 ruff check depthscope tests scripts
-docker compose config --quiet
+docker compose --profile research config --quiet
 python3 scripts/verify_data.py
 \end{verbatim}
 
@@ -52,23 +53,24 @@ The verification script saves actual results in the evidence directory. The obse
 
 \newpage
 \section{Live acquisition and service checks}
-The live sample covers 21 November 2026, 20:43:46--20:45:45 UTC.\par
+The live sample covers 22 November 2026, 18:58:06--19:00:05 UTC.\par
 
 \small
 \begin{tabularx}{\linewidth}{@{}P{7mm}P{25mm}LLL@{}}
 \toprule
 \textbf{ID} & \textbf{Objective} & \textbf{Steps} & \textbf{Expected result} & \textbf{Actual result}\\
 \midrule
-D08 & Live acquisition & Run the Compose stack and query source messages and normalized records over the 120-second interval. & Both exchanges supply data and all four books have a continuous record sequence. & PASS. Coinbase supplied 4,538 messages and Kraken 20,547. Every book produced 120 valid records.\\\addlinespace
-D09 & Fresh snapshots on startup & Start the processor with mocked transport, allow one poll, then stop it. Inspect the subscription and resync requests. & Consume the current raw stream and request fresh snapshots from both venues. Close resources on exit. & PASS. The reader tails raw events, both requests are sent and reader/processor are closed.\\\addlinespace
-D10 & Fee source loading & Load \texttt{data/fees.csv} at \texttt{2026-11-21T12:00:00Z}. & Select the latest effective standard taker rate for both venues. & PASS. Coinbase is 60 bps and Kraken is 80 bps.\\\addlinespace
-D11 & Configuration and schema & Validate Compose and lint, then create a fresh acquisition table and insert one record. & Checks succeed. The table has run, kind, second, venue, asset and payload fields. & PASS. The six fields match the expected schema and the inserted row is readable.\\
+D09 & Live acquisition & Run the Compose stack and query source messages and normalized records over the 120-second interval. & Both exchanges supply data and all four books have a continuous record sequence. & PASS. Coinbase supplied 4,840 messages and Kraken 31,863. Every book produced 120 valid records.\\\addlinespace
+D10 & Fresh snapshots on startup & Start the processor with mocked transport, allow one poll, then stop it. Inspect the subscription and resync requests. & Consume the current raw stream and request fresh snapshots from both venues. Close resources on exit. & PASS. The reader tails raw events, both requests are sent and reader/processor are closed.\\\addlinespace
+D11 & Fee source loading & Load \texttt{data/fees.csv} at \texttt{2026-11-21T12:00:00Z}. & Select the latest effective standard taker rate for both venues. & PASS. Coinbase is 60 bps and Kraken is 80 bps.\\\addlinespace
+D12 & Configuration and schema & Validate Compose and lint, then create a fresh acquisition table and insert one record. & Checks succeed. The table has run, kind, second, venue, asset and payload fields. & PASS. The six fields match the expected schema and the inserted row is readable.\\\addlinespace
+D13 & Kappa reprocessing & Replay the same interval from Parquet through a separate Kafka topic, then join the replay and live records in ClickHouse. & Match the payload for every venue, asset and second. & PASS. All 480 payloads match. Replay read 43,930 events in 7.4 s.\\
 \bottomrule
 \end{tabularx}
 \normalsize
 
 \medskip
-\texttt{evidence/live-summary.json} records the interval, source counts and maximum lag. The collector log, unit-test results, fee-loader output and schema result are stored beside it.
+\texttt{evidence/live-summary.json} records the interval, source counts and maximum lag and exact replay agreement. The replay log, collector log, unit-test results, fee-loader output and schema result are stored beside it.
 
-The sample verifies the stated interval. Internal trade-ID gaps, a missing initial snapshot and crash/retry ordering need broader fault tests. Historical replay and processor checkpoints are planned for later work. Long-run throughput and later model accuracy are outside these test results.
+The sample verifies the stated interval. Internal trade-ID gaps, a missing initial snapshot and crash/retry ordering need broader fault tests.
 \end{document}

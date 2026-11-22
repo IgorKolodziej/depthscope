@@ -1,6 +1,6 @@
-"""Capture acquisition, validation and storage evidence for the Data milestone.
+"""Capture test and live/replay evidence for the Data milestone.
 
-Run after the Compose stack has collected at least two minutes of data.
+Run after the Compose stack has collected about three minutes of data.
 """
 
 import ast
@@ -33,7 +33,7 @@ def capture():
     stamp = datetime.now(timezone.utc).isoformat()
     for name, arguments in (
         ('unit-tests', ['make', 'test']),
-        ('compose-config', ['docker', 'compose', 'config', '--quiet']),
+        ('compose-config', ['docker', 'compose', '--profile', 'research', 'config', '--quiet']),
         ('lint', ['ruff', 'check', 'depthscope', 'tests', 'scripts']),
         ('fee-loader', [sys.executable, '-m', 'depthscope', 'fees', '--path', 'data/fees.csv',
                         '--at', '2026-11-21T12:00:00Z']),
@@ -93,6 +93,17 @@ finally:
     assert {row['venue'] for row in raw if int(row['messages']) > 0} == {'coinbase', 'kraken'}, raw
     def iso(second):
         return datetime.fromtimestamp(second, timezone.utc).isoformat()
+    run_id = 'data-evidence-' + str(int(datetime.now(timezone.utc).timestamp()))
+    replay = command('docker', 'compose', '--profile', 'research', 'run', '--rm', 'replay',
+                     '--run-id', run_id, '--start', iso(start), '--end', iso(end))
+    (EVIDENCE / 'replay.txt').write_text(replay.stdout + replay.stderr)
+    parity = query(f"""
+        SELECT count() AS pairs, countIf(a.payload=b.payload) AS identical
+        FROM (SELECT * FROM observations FINAL WHERE run='{run_id}' AND kind='frames') AS a
+        INNER JOIN (SELECT * FROM observations FINAL WHERE run='live' AND kind='frames') AS b
+        ON a.second=b.second AND a.venue=b.venue AND a.asset=b.asset FORMAT JSONEachRow
+    """)[0]
+    assert int(parity['pairs']) == int(parity['identical']) == 480, parity
     log = command('docker', 'compose', 'logs', '--no-color', '--since', iso(start), '--until', iso(end+1), 'collector').stdout
     (EVIDENCE / 'collector.txt').write_text(log)
     lags, rates = [], []
@@ -103,11 +114,12 @@ finally:
             lags.append(ast.literal_eval(match[3]))
     assert rates and lags, 'missing rate samples'
     summary = dict(verified_at=stamp, interval_start=iso(start), interval_end=iso(end), seconds=120,
-                   raw=raw, frames=frames,
+                   run_id=run_id, raw=raw, frames=frames, replay_parity=parity,
                    max_combined_messages_per_second=max(sum(row.values()) for row in rates),
                    max_reported_lag_seconds={stage:max(row[stage] for row in lags) for stage in lags[0]})
     (EVIDENCE / 'live-summary.json').write_text(json.dumps(summary, indent=2)+'\n')
-    (EVIDENCE / 'compose-status.txt').write_text(command('docker', 'compose', 'ps', '-a').stdout)
+    status = command('docker', 'compose', 'ps', '-a').stdout
+    (EVIDENCE / 'compose-status.txt').write_text('\n'.join(line.rstrip() for line in status.splitlines()) + '\n')
     (EVIDENCE / 'test-environment.txt').write_text(command('python3', '--version').stdout +
                                                 command('docker', 'compose', 'version').stdout)
     print(json.dumps(summary, indent=2))

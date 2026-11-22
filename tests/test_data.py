@@ -27,6 +27,11 @@ def snapshot(second):
                       asks=[["1000.50", "1"], ["1001.00", "2"], ["1001.01", "20"]]))
 
 
+def heartbeat(second):
+    return event(second, "message", "coinbase",
+                 dict(type="heartbeat", product_id="BTC-USD", last_trade_id=0))
+
+
 class MemoryArchive(Archive):
     def __init__(self):
         self.objects = {}
@@ -34,6 +39,13 @@ class MemoryArchive(Archive):
     def put(self, key, data):
         self.objects[key] = data
 
+
+
+    def get(self, key):
+        return self.objects[key]
+
+    def keys(self, prefix):
+        return (key for key in self.objects if key.startswith(prefix))
 
 
 class BookTests(unittest.TestCase):
@@ -119,6 +131,35 @@ class BookTests(unittest.TestCase):
         self.assertEqual(rows[11]["exchange_time"], "2026-11-21T20:00:00Z")
         self.assertEqual(rows[11]["channel"], "l2update")
         self.assertTrue(any("venue=coinbase/asset=BTC/" in path for path in manifest["paths"]))
+
+
+    def test_checkpoint_and_parquet_reproduce_exact_frames(self):
+        archive = MemoryArchive()
+        events = [snapshot(0)]
+        expected = []
+        self.processor.process(events[0])
+        for second in range(1, 81):
+            pair = [heartbeat(second), event(second)]
+            events.extend(pair)
+            self.processor.process(pair[0])
+            frame = self.processor.process(pair[1])
+            if second == 60:
+                archive.save_checkpoint(len(events), self.processor.checkpoint())
+            elif second > 60:
+                expected.append(frame)
+        batch = list(enumerate(events))
+        for start in range(0, len(batch), 50):
+            archive.write_events(batch[start:start + 50])
+        restored = Processor()
+        self.addCleanup(restored.close)
+        checkpoint = archive.checkpoint(62)
+        restored.restore(checkpoint["processor"])
+        actual = [frame for row in archive.events(80 * NS, checkpoint["next_offset"])
+                  if (frame := restored.process(row)) is not None]
+        self.assertEqual(expected, actual)
+        del archive.objects[sorted(archive.keys("index/"))[2]]
+        with self.assertRaisesRegex(RuntimeError, "archive offset gap"):
+            list(archive.events(80 * NS, checkpoint["next_offset"]))
 
 
 class DataInputTests(unittest.TestCase):

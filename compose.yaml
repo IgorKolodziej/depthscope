@@ -125,6 +125,24 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+  replay:
+    image: depthscope-data-local
+    restart: 'no'
+    environment: *id001
+    profiles:
+    - research
+    entrypoint:
+    - python
+    - -m
+    - depthscope
+    - replay
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      objectstore:
+        condition: service_started
 volumes:
   kafka: null
   clickhouse: null

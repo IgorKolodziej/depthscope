@@ -55,14 +55,14 @@
 \vspace{6pt}
 {\small Igor Kołodziej \quad Adam Kaniasty \quad Mateusz Iwaniuk \quad Hubert Kowalski}\par
 \vspace{6pt}
-{\small 21 November 2026\par}
+{\small 22 November 2026\par}
 \end{center}
 \vspace{2pt}
 
 \section{Updates to the PM1 assumptions}
 DepthScope will compare visible BTC/USD and ETH/USD liquidity on Coinbase Exchange and Kraken and later forecast liquidity 60 seconds ahead. This checkpoint covers acquisition, source validation, storage and archiving.
 
-The native component uses C17 instead of C++ to keep source-book validation in a small fixed-point library. Python hosts the library through \texttt{ctypes} and handles network connections and service orchestration. A second processor thread batches raw messages into ClickHouse every three seconds or 5,000 messages for data-quality queries. The complete Parquet archive will support later historical reprocessing. All runtime services run in Docker Compose on one host with persistent volumes.
+The native component uses C17 instead of C++ to keep source-book validation in a small fixed-point library. Python hosts the library through \texttt{ctypes} and handles network connections and service orchestration. A second processor thread batches raw messages into ClickHouse every three seconds or 5,000 messages for data-quality queries. The Parquet archive supports historical reprocessing. All runtime services run in Docker Compose on one host with persistent volumes.
 
 \section{Conceptual data model}
 \begin{table}[h!]
@@ -82,7 +82,7 @@ Fee row & Venue, effective date, maker/taker rates, observed date, tier and sour
 \end{tabularx}
 \end{table}
 
-A venue lists instruments. Each instrument produces many raw events and acquisition records. Raw events are grouped into archive batches, whose manifests retain stream offsets and receipt-time bounds. Each venue has dated fee rows. On processor startup, fresh source snapshots establish the current book state; processor checkpoints and a historical replay reader are planned for later work.
+A venue lists instruments. Each instrument produces many raw events and acquisition records. Raw events are grouped into archive batches, whose manifests retain stream offsets and receipt-time bounds. Each venue has dated fee rows. Live startup requests fresh snapshots. Archived checkpoints let replay restore a previously validated book state and resume at its next event offset.
 
 Raw messages are retained in full. Normalized one-second records provide a view of validated book state, while the raw stream preserves every captured update and trade.
 
@@ -105,7 +105,7 @@ Instrument / feed status & Market status, price and quantity increments, heartbe
 \end{table}
 
 \subsection{Measured inflow and coverage}
-The measured receipt-time interval is 21 November 2026, 20:43:46--20:45:45 UTC, covering 120 seconds. Counts combine BTC and ETH and all subscribed channels for each venue.
+The measured receipt-time interval is 22 November 2026, 18:58:06--19:00:05 UTC, covering 120 seconds. Counts combine BTC and ETH and all subscribed channels for each venue.
 
 \begin{table}[h!]
 \centering\small
@@ -113,8 +113,8 @@ The measured receipt-time interval is 21 November 2026, 20:43:46--20:45:45 UTC, 
 \toprule
 \textbf{Venue} & \textbf{Messages} & \textbf{Mean msg/s} & \textbf{Payload kB/s}\\
 \midrule
-Coinbase Exchange & 4,538 & 37.82 & 24.6\\
-Kraken Spot v2 & 20,547 & 171.22 & 33.1\\
+Coinbase Exchange & 4,840 & 40.33 & 30.1\\
+Kraken Spot v2 & 31,863 & 265.52 & 51.4\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -134,12 +134,12 @@ Book prices and quantities are decoded as decimals and stored as exact $10^{-8}$
 \begin{figure}[h!]
 \centering
 \includegraphics[width=\linewidth,height=124mm,keepaspectratio]{system-architecture.pdf}
-\caption{DepthScope Kappa architecture, adapted from the project proposal. Dashed boxes mark planned modules. Dashed arrows mark replay via Kafka and batch evaluation.}
+\caption{DepthScope Kappa architecture, adapted from the project proposal. Dashed boxes mark planned modules. The dashed paths show the implemented replay and planned batch evaluation.}
 \end{figure}
 
 Python collectors timestamp the WebSocket messages and append them to Kafka. The processor keeps the current books in C and publishes validated levels and feed status every second. A separate thread writes raw events to ClickHouse, and a Kafka consumer stores the one-second book records there.
 
-The archiver writes raw messages and offset manifests to SeaweedFS for later replay through the same validation code. The Python fee loader selects rates by effective date for later batch evaluation. The acquisition and storage services run in Docker Compose.
+The archiver writes raw messages, offset manifests and book checkpoints to SeaweedFS. The replay job sends recorded events through an isolated Kafka topic, applies the same C book validation as the live job and writes records to ClickHouse with a separate run ID. In the 120-second demonstration, all 480 rebuilt records matched the live records. The Python fee loader selects rates by effective date for later batch evaluation.
 
 \section{Planned analytical approach and presentation}
 The planned regression task is to predict visible USD liquidity 60 seconds ahead for each venue, asset and trade side. The target will sum asks up to 0.10\% above the future midpoint for buying, or bids down to 0.10\% below it for selling.

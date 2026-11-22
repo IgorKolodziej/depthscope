@@ -27,10 +27,18 @@ def main():
     fees = commands.add_parser("fees")
     fees.add_argument("--path", required=True)
     fees.add_argument("--at", required=True, type=utc_second)
+    replay = commands.add_parser("replay")
+    replay.add_argument("--run-id", required=True)
+    replay.add_argument("--start", required=True, type=utc_second)
+    replay.add_argument("--end", required=True, type=utc_second)
     args = parser.parse_args()
     if args.command == "fees":
         from .fees import FeeSchedule
         print(json.dumps(FeeSchedule(args.path).at(args.at), sort_keys=True))
+    elif args.command == "replay":
+        if args.start > args.end:
+            parser.error("replay requires start <= end")
+        services.replay(args)
     elif args.command == "store-frames":
         services.persist(services.broker.FRAMES, "frames-store.pkl")
     else:

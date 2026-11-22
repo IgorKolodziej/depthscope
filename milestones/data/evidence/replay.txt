@@ -1,0 +1,5 @@
+ Container depthscope-replay-check-clickhouse-1  Running
+ Container depthscope-replay-check-kafka-1  Running
+ Container depthscope-replay-check-objectstore-1  Running
+2026-11-22 19:00:22,644 INFO Found credentials in environment variables.
+2026-11-22 19:00:30,135 INFO Replay data-evidence-1795374021 complete: 43930 events in 7.4s (5934 events/s)

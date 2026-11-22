@@ -1,8 +1,9 @@
 {
-  "verified_at": "2026-11-21T20:45:59.270854+00:00",
-  "interval_start": "2026-11-21T20:43:46+00:00",
-  "interval_end": "2026-11-21T20:45:45+00:00",
+  "verified_at": "2026-11-22T19:00:19.600276+00:00",
+  "interval_start": "2026-11-22T18:58:06+00:00",
+  "interval_end": "2026-11-22T19:00:05+00:00",
   "seconds": 120,
+  "run_id": "data-evidence-1795374021",
   "raw": [
     {
       "venue": "",
@@ -14,18 +15,18 @@
     },
     {
       "venue": "coinbase",
-      "messages": 4538,
+      "messages": 4840,
       "connects": 0,
       "disconnects": 0,
-      "payload_bytes": 2957733,
+      "payload_bytes": 3610119,
       "ticks": 0
     },
     {
       "venue": "kraken",
-      "messages": 20547,
+      "messages": 31863,
       "connects": 0,
       "disconnects": 0,
-      "payload_bytes": 3971793,
+      "payload_bytes": 6164094,
       "ticks": 0
     }
   ],
@@ -63,11 +64,15 @@
       "analytics_fields": 0
     }
   ],
-  "max_combined_messages_per_second": 389.3,
+  "replay_parity": {
+    "pairs": 480,
+    "identical": 480
+  },
+  "max_combined_messages_per_second": 494.3,
   "max_reported_lag_seconds": {
-    "processor": 4,
-    "archive": 3,
+    "processor": 5,
+    "archive": 10,
     "frames": 1,
-    "raw_clickhouse": 3
+    "raw_clickhouse": 4
   }
 }

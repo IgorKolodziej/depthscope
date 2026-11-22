@@ -11,10 +11,10 @@ Collectors and adapters share common transport and normalization code. The table
 
 ## Milestone scope
 
-This milestone covers source acquisition, checksum and heartbeat validation, raw/normalized storage, fee loading and archiving. Historical replay, recovery experiments, liquidity metrics, rolling features, regression, execution-policy experiments and the dashboard are planned for subsequent stages.
+This milestone covers source acquisition, checksum and heartbeat validation, raw and normalized storage, fee loading, archiving and historical reprocessing. Liquidity metrics, rolling features, regression, execution-policy experiments and the dashboard are planned for subsequent stages.
 
 ## Data code boundaries
 
 The C code applies source snapshots and absolute level changes, truncates Kraken books to the subscribed depth, verifies CRC32 and checks book ordering. Its Python binding converts decimal source values and maintains the current acquisition book. The acquisition pipeline handles connection status, heartbeat checks and instrument metadata.
 
-ClickHouse stores original events and normalized acquisition records keyed by run, venue, asset and time. The fee module loads the versioned batch input. The archive writer stores original messages and per-batch manifests. A historical replay reader is planned for the Processing milestone.
+ClickHouse stores original events and normalized acquisition records keyed by run, venue, asset and time. The fee module loads the versioned batch input. The archive writer stores original messages, per-batch manifests and book checkpoints. Replay sends archived messages through a dedicated Kafka topic and uses the live validator to rebuild the records under a separate run ID.

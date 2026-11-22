@@ -1,8 +1,9 @@
-"""Compose services for acquisition, validation and storage."""
+"""Compose services for acquisition, storage and historical reprocessing."""
 
 import asyncio
 import logging
 import os
+import re
 import time
 from collections import Counter
 from threading import Event, Thread
@@ -139,7 +140,7 @@ def store_raw(stop):
 
 
 def process_frames(stop):
-    broker.ensure_topics(broker.RAW, broker.FRAMES, broker.RESYNC, broker.PROGRESS)
+    broker.ensure_topics(broker.RAW, broker.FRAMES, broker.RESYNC, broker.PROGRESS, broker.CHECKPOINTS)
     writer = broker.Writer()
     processor = Processor()
     reader = broker.Reader(broker.RAW, tail=True)
@@ -152,7 +153,7 @@ def process_frames(stop):
             item = reader.poll()
             if item is None:
                 continue
-            _, event = item
+            offset, event = item
             frames = processor.process(event)
             if frames is None:
                 continue
@@ -164,6 +165,10 @@ def process_frames(stop):
                     last_resync[venue] = second
             if second % 5 == 0:
                 writer.send(broker.PROGRESS, dict(stage="processor", second=second))
+            if second % 300 == 0:
+                writer.send(broker.CHECKPOINTS,
+                            dict(next_offset=offset + 1, processor=processor.checkpoint()))
+                writer.flush()
     finally:
         reader.close()
         processor.close()
@@ -204,15 +209,21 @@ def persist(topic, state_file):
 
 
 def archiver():
-    broker.ensure_topics(broker.RAW, broker.PROGRESS)
+    broker.ensure_topics(broker.RAW, broker.PROGRESS, broker.CHECKPOINTS)
     writer = broker.Writer()
     saved = storage.load_state("archive.pkl")
     archive = Archive()
     reader = broker.Reader(broker.RAW, saved["next_offset"] if saved else 0)
+    state = storage.load_state("checkpoint-archive.pkl")
+    checkpoints = broker.Reader(broker.CHECKPOINTS, state["next_offset"] if state else 0)
     batch = []
     deadline = time.monotonic() + 10
     try:
         while True:
+            if checkpoint := checkpoints.poll(0):
+                checkpoint_offset, row = checkpoint
+                archive.save_checkpoint(row["next_offset"], row["processor"])
+                storage.save_state("checkpoint-archive.pkl", dict(next_offset=checkpoint_offset + 1))
             item = reader.poll(0.5)
             if item:
                 batch.append(item)
@@ -224,3 +235,73 @@ def archiver():
                 deadline = time.monotonic() + 10
     finally:
         reader.close()
+        checkpoints.close()
+
+
+
+def replay(args):
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.run_id) or args.run_id == "live":
+        raise ValueError("run ID must be 1–64 letters, digits, underscores or hyphens and cannot be live")
+    topic = f"depthscope.replay.{args.run_id}"
+    broker.ensure_topics(topic, exclusive=True)
+    reader = None
+    writer = broker.Writer()
+    archive = Archive()
+    storage.initialize()
+    processor = Processor()
+    pending = []
+    next_second = args.start
+
+    def consume():
+        nonlocal reader, next_second
+        if reader is None:
+            reader = broker.Reader(topic, 0)
+        item = reader.poll(30)
+        if item is None:
+            raise RuntimeError("timed out waiting for replay events")
+        _, event = item
+        frames = processor.process(event)
+        if frames is None:
+            return
+        second = processor.second
+        if args.start <= second <= args.end:
+            if second != next_second:
+                raise RuntimeError(f"missing archived clock tick at {next_second}")
+            next_second += 1
+            pending.extend(frame_rows(second, frames))
+        if second % 10 == 0:
+            storage.insert(args.run_id, "frames", pending)
+            pending.clear()
+
+    started = time.monotonic()
+    total = 0
+    try:
+        checkpoint = archive.checkpoint(args.start - 1)
+        if checkpoint:
+            processor.restore(checkpoint["processor"])
+        source = archive.events(args.end * NS, checkpoint["next_offset"] if checkpoint else None)
+        count = 0
+        for event in source:
+            writer.send(topic, event)
+            total += 1
+            count += 1
+            if count == 256:
+                writer.flush()
+                for _ in range(count):
+                    consume()
+                count = 0
+        writer.flush()
+        for _ in range(count):
+            consume()
+        if next_second != args.end + 1:
+            raise RuntimeError(f"missing archived clock tick at {next_second}")
+        storage.insert(args.run_id, "frames", pending)
+        storage.insert(args.run_id, "run", [dict(second=args.start, end=args.end, asset="",
+                                                 archive_events=total, schema=3)])
+        elapsed = time.monotonic() - started
+        logging.info("Replay %s complete: %d events in %.1fs (%.0f events/s)",
+                     args.run_id, total, elapsed, total / elapsed)
+    finally:
+        processor.close()
+        if reader is not None:
+            reader.close()

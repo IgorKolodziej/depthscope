@@ -92,3 +92,22 @@ class Book:
         levels = ct.POINTER(Level)()
         count = self.library.book_levels(self.handle, bid, ct.byref(levels))
         return [(levels[i].price / SCALE, levels[i].quantity / SCALE) for i in range(count)]
+
+    def checkpoint(self):
+        sides = []
+        for bid in (False, True):
+            levels = ct.POINTER(Level)()
+            count = self.library.book_levels(self.handle, bid, ct.byref(levels))
+            sides.append({
+                "levels": [(levels[i].price, levels[i].quantity, levels[i].digits.decode())
+                           for i in range(count)],
+            })
+        return dict(ready=self.ready, status=self.status, sides=sides)
+
+    def restore(self, state):
+        self.ready, self.status = state["ready"], state["status"]
+        self.library.book_reset(self.handle, self.ready)
+        for bid, side in enumerate(state["sides"]):
+            for price, quantity, digits in side["levels"]:
+                if not self.library.book_set(self.handle, bid, price, quantity, digits.encode()):
+                    raise ValueError("invalid book checkpoint")

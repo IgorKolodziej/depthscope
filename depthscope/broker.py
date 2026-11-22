@@ -8,24 +8,28 @@ RAW = "depthscope.raw"
 FRAMES = "depthscope.frames"
 RESYNC = "depthscope.resync"
 PROGRESS = "depthscope.progress"
+CHECKPOINTS = "depthscope.checkpoints"
 
 
 def settings():
     return {"bootstrap.servers": os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")}
 
 
-def ensure_topics(*names):
+def ensure_topics(*names, exclusive=False):
     from confluent_kafka.admin import AdminClient, NewTopic
     from confluent_kafka import KafkaError, KafkaException
 
     admin = AdminClient(settings())
-    topics = [NewTopic(name, 1, 1) for name in names]
-    for future in admin.create_topics(topics, request_timeout=30).values():
+    topics = [NewTopic(name, 1, 1, config={"retention.ms": "86400000"} if ".replay." in name else {})
+              for name in names]
+    for name, future in admin.create_topics(topics, request_timeout=30).items():
         try:
             future.result()
         except KafkaException as exc:
             if exc.args[0].code() != KafkaError.TOPIC_ALREADY_EXISTS:
                 raise
+            if exclusive:
+                raise ValueError(f"Kafka topic {name} already exists; use a fresh run ID") from exc
 
 
 class Writer:

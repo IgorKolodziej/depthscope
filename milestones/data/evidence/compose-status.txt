@@ -1,8 +1,8 @@
-NAME                            IMAGE                               COMMAND                  SERVICE       CREATED             STATUS                       PORTS
-depthscope-data-archiver-1      depthscope-data-local               "python -m depthscop…"   archiver      2 minutes ago       Up 2 minutes
-depthscope-data-clickhouse-1    clickhouse/clickhouse-server:25.8   "/entrypoint.sh"         clickhouse    About an hour ago   Up About an hour (healthy)   8123/tcp, 9000/tcp, 9009/tcp
-depthscope-data-collector-1     depthscope-data-local               "python -m depthscop…"   collector     2 minutes ago       Up 2 minutes
-depthscope-data-frame-store-1   depthscope-data-local               "python -m depthscop…"   frame-store   2 minutes ago       Up 2 minutes
-depthscope-data-kafka-1         apache/kafka:4.1.2                  "/__cacert_entrypoin…"   kafka         About an hour ago   Up About an hour (healthy)   9092/tcp
-depthscope-data-objectstore-1   chrislusf/seaweedfs:4.22            "/entrypoint.sh mini…"   objectstore   About an hour ago   Up About an hour             7333/tcp, 8080/tcp, 8333/tcp, 8888/tcp, 9333/tcp, 18080/tcp, 18888/tcp, 19333/tcp
-depthscope-data-processor-1     depthscope-data-local               "python -m depthscop…"   processor     2 minutes ago       Up 2 minutes
+NAME                                    IMAGE                               COMMAND                  SERVICE       CREATED         STATUS                   PORTS
+depthscope-replay-check-archiver-1      depthscope-data-local               "python -m depthscop…"   archiver      3 minutes ago   Up 2 minutes
+depthscope-replay-check-clickhouse-1    clickhouse/clickhouse-server:25.8   "/entrypoint.sh"         clickhouse    3 minutes ago   Up 3 minutes (healthy)   8123/tcp, 9000/tcp, 9009/tcp
+depthscope-replay-check-collector-1     depthscope-data-local               "python -m depthscop…"   collector     3 minutes ago   Up 2 minutes
+depthscope-replay-check-frame-store-1   depthscope-data-local               "python -m depthscop…"   frame-store   3 minutes ago   Up 2 minutes
+depthscope-replay-check-kafka-1         apache/kafka:4.1.2                  "/__cacert_entrypoin…"   kafka         3 minutes ago   Up 3 minutes (healthy)   9092/tcp
+depthscope-replay-check-objectstore-1   chrislusf/seaweedfs:4.22            "/entrypoint.sh mini…"   objectstore   3 minutes ago   Up 3 minutes             7333/tcp, 8080/tcp, 8333/tcp, 8888/tcp, 9333/tcp, 18080/tcp, 18888/tcp, 19333/tcp
+depthscope-replay-check-processor-1     depthscope-data-local               "python -m depthscop…"   processor     3 minutes ago   Up 2 minutes

@@ -11,7 +11,7 @@
 \title{DepthScope}
 \subtitle{Data acquisition and pre-processing}
 \author[DepthScope team]{Igor Kołodziej \and Adam Kaniasty \and Mateusz Iwaniuk \and Hubert Kowalski}
-\date{21 November 2026}
+\date{22 November 2026}
 \begin{document}
 
 \begin{frame}
@@ -27,7 +27,7 @@ A quoted price does not show how much can be traded near it. For larger BTC or E
 \medskip
 
 \textbf{Who it is for.}\par\vspace{0.35em}
-An analyst planning execution: choose venue, order size and timing.
+An analyst comparing liquidity across venues before a trade.
 \medskip
 
 \textbf{What we build.}\par\vspace{0.35em}
@@ -42,15 +42,14 @@ An analyst planning execution: choose venue, order size and timing.
 \begin{tikzpicture}[
   font=\footnotesize,
   box/.style={draw,structure.fg,rounded corners=2pt,align=center,inner sep=5pt,text width=3.35cm},
-  arr/.style={-{Stealth[length=2mm]},structure.fg,line width=0.9pt},
-  lbl/.style={font=\scriptsize,align=center,text width=2.9cm}
+  arr/.style={-{Stealth[length=2mm]},structure.fg,line width=0.9pt}
 ]
-  \node[box,fill=structure.fg!12] (ex) {Coinbase and Kraken\\public market data};
-  \node[box,below=1.15cm of ex] (ds) {DepthScope\\dashboard and forecasts};
-  \node[box,below=1.15cm of ds,fill=structure.fg!12] (an) {Execution analyst};
-  \draw[arr] (ex) -- (ds) node[midway,lbl,right=1mm] {WebSocket\\JSON feeds};
-  \draw[arr] (ds) -- (an) node[midway,lbl,right=1mm] {venue comparison\\and forecasts};
-  \draw[arr] (an.west) -- ++(-0.65,0) |- node[pos=0.28,lbl,left=1mm] {asset, size,\\trade side} (ds.west);
+  \node[box,fill=structure.fg!12] (ex) {Coinbase and Kraken\\public WebSocket feeds};
+  \node[box,below=0.85cm of ex] (ds) {DepthScope\\dashboard and forecasts};
+  \node[box,below=0.85cm of ds,fill=structure.fg!12] (an) {Execution analyst\\selects asset and trade side};
+  \draw[arr] (ex) -- (ds);
+  \draw[arr] (ds) -- (an);
+  \draw[arr] (an.west) -- ++(-0.65,0) |- (ds.west);
 \end{tikzpicture}
 \end{columns}
 \end{frame}
@@ -103,18 +102,35 @@ Both feeds cover BTC/USD and ETH/USD. One message may contain several changes or
 \toprule
 \textbf{Venue} & \textbf{Messages} & \textbf{Mean msg/s} & \textbf{Payload kB/s}\\
 \midrule
-Coinbase Exchange & 4,538 & 37.82 & 24.6\\
-Kraken Spot v2 & 20,547 & 171.22 & 33.1\\
+Coinbase Exchange & 4,840 & 40.33 & 30.1\\
+Kraken Spot v2 & 31,863 & 265.52 & 51.4\\
 \bottomrule
 \end{tabularx}\par
 \smallskip
-{\footnotesize Sample of 120 seconds on 21 November 2026, 20:43:46--20:45:45 UTC. Rates combine BTC, ETH and all subscribed channels.}
+{\footnotesize Sample of 120 seconds on 22 November 2026, 18:58:06--19:00:05 UTC. Rates combine BTC, ETH and all subscribed channels.}
 \medskip
 \begin{itemize}
-\item Four books each produced 120 valid records. Eight fixture tests passed, including archive integrity and fresh-snapshot startup.
+\item Four books each produced 120 valid records. Nine fixture tests passed.
 \item Checks cover absolute quantities, book ordering, Kraken CRC32, Coinbase heartbeats and trading status.
 \item Internal trade-ID gaps and a missing initial snapshot need stronger detection. The sample gives a short-window capacity observation.
 \end{itemize}
+\end{frame}
+
+\begin{frame}{Kappa replay}
+\begin{block}{Reprocessing path}
+\centering\small
+Parquet archive $\rightarrow$ Kafka replay topic $\rightarrow$ C book validation $\rightarrow$ ClickHouse
+\end{block}
+
+The replay job reads events in their recorded order and uses the same validator as live acquisition. ClickHouse stores the rebuilt books under a separate run ID.
+
+\begin{block}{Demonstration on a 120-second window}
+\begin{itemize}
+\item Compared the live and replayed records by venue, asset and second.
+\item \textbf{480 of 480} book records matched exactly.
+\item Replay processed 43,930 archived events, including warm-up, in 7.4 s.
+\end{itemize}
+\end{block}
 \end{frame}
 
 \begin{frame}{Planned rolling features and forecast timing}
