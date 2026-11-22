@@ -18,6 +18,43 @@
 \titlepage
 \end{frame}
 
+\begin{frame}{Why DepthScope?}
+\begin{columns}[T,onlytextwidth]
+\column{0.58\textwidth}
+\small
+\textbf{Problem.}\par\vspace{0.35em}
+A quoted price does not show how much can be traded near it. For larger BTC or ETH orders, visible depth, spread, fees and venue choice change execution cost.
+\medskip
+
+\textbf{Who it is for.}\par\vspace{0.35em}
+An analyst planning execution: choose venue, order size and timing.
+\medskip
+
+\textbf{What we build.}\par\vspace{0.35em}
+\begin{itemize}\setlength{\itemsep}{0.3em}
+\item Live pipeline for \textbf{Coinbase Exchange} and \textbf{Kraken}: BTC/USD and ETH/USD.
+\item Compare visible liquidity and \textbf{forecast} it \textbf{60\,s} ahead (every 5\,s).
+\item Research views on execution cost and recorded policies.
+\end{itemize}
+\column{0.40\textwidth}
+\centering
+\vspace{0.6em}
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw,structure.fg,rounded corners=2pt,align=center,inner sep=5pt,text width=3.35cm},
+  arr/.style={-{Stealth[length=2mm]},structure.fg,line width=0.9pt},
+  lbl/.style={font=\scriptsize,align=center,text width=2.9cm}
+]
+  \node[box,fill=structure.fg!12] (ex) {Coinbase and Kraken\\public market data};
+  \node[box,below=1.15cm of ex] (ds) {DepthScope\\dashboard and forecasts};
+  \node[box,below=1.15cm of ds,fill=structure.fg!12] (an) {Execution analyst};
+  \draw[arr] (ex) -- (ds) node[midway,lbl,right=1mm] {WebSocket\\JSON feeds};
+  \draw[arr] (ds) -- (an) node[midway,lbl,right=1mm] {venue comparison\\and forecasts};
+  \draw[arr] (an.west) -- ++(-0.65,0) |- node[pos=0.28,lbl,left=1mm] {asset, size,\\trade side} (ds.west);
+\end{tikzpicture}
+\end{columns}
+\end{frame}
+
 \begin{frame}{Data sets and available fields}
 \footnotesize
 \begin{tabularx}{\linewidth}{@{}P{19mm}P{12mm}LL@{}}
