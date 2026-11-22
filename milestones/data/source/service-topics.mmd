@@ -1,0 +1,64 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: Arial
+    fontSize: 21px
+    primaryTextColor: '#142c38'
+    lineColor: '#365565'
+    clusterBkg: '#f7fafb'
+    clusterBorder: '#d3e0e5'
+  flowchart:
+    htmlLabels: false
+    curve: linear
+    wrappingWidth: 230
+    nodeSpacing: 19
+    rankSpacing: 22
+    padding: 8
+---
+flowchart TB
+    subgraph live["Live acquisition"]
+        direction LR
+        feeds["Coinbase + Kraken<br/>WebSockets"] --> collector["Collector"]
+        collector --> raw["depthscope.raw"]
+        raw --> book["Processor<br/>C book validation"]
+        raw --> writer["Processor<br/>Raw writer thread"]
+        raw --> archiver["Archiver"]
+        book --> frames["depthscope.frames"] --> frameStore["Frame-store"]
+        book --> checkpoints["depthscope.checkpoints"] --> archiver
+        frameStore --> db["ClickHouse<br/>Raw events and<br/>live books"]
+        writer --> db
+        archiver --> seaweed["SeaweedFS<br/>Parquet and checkpoints"]
+    end
+
+    subgraph support[" "]
+        direction LR
+        subgraph control["Live monitoring and recovery"]
+            direction LR
+            workers["Processor, raw writer,<br/>archiver, frame-store"] --> progress["depthscope.progress"] --> guard["Collector<br/>Load guard"]
+            recovery["Processor"] --> resync["depthscope.resync"] --> reconnect["Collector<br/>Feed reconnect"]
+        end
+        subgraph fees["Fee batch input"]
+            direction LR
+            csv["Fee CSV"] --> loader["Python fee loader"]
+        end
+        control ~~~ fees
+    end
+
+    subgraph replay["On-demand replay"]
+        direction LR
+        archive["SeaweedFS<br/>Archive"] --> reader["Replay job<br/>Archive reader"]
+        reader --> topic["depthscope.replay.<br/>&lt;run_id&gt;"] --> validator["Replay job<br/>C book validation"]
+        validator --> replayDb["ClickHouse<br/>Replay books"]
+    end
+
+    live ~~~ support
+    support ~~~ replay
+    style support fill:transparent,stroke:transparent
+
+    classDef topic fill:#e2f1f4,stroke:#22778b,stroke-width:2px
+    classDef service fill:#ffffff,stroke:#8398a1,stroke-width:2px
+    classDef store fill:#eaf3ee,stroke:#42775d,stroke-width:2px
+    class raw,frames,checkpoints,progress,resync,topic topic
+    class feeds,collector,book,writer,archiver,frameStore,workers,guard,recovery,reconnect,reader,validator,loader service
+    class db,seaweed,archive,replayDb,csv store

@@ -141,6 +141,30 @@ Python collectors timestamp the WebSocket messages and append them to Kafka. The
 
 The archiver writes raw messages, offset manifests and book checkpoints to SeaweedFS. The replay job sends recorded events through an isolated Kafka topic, applies the same C book validation as the live job and writes records to ClickHouse with a separate run ID. In the 120-second demonstration, all 480 rebuilt records matched the live records. The Python fee loader selects rates by effective date for later batch evaluation.
 
+\newpage
+\subsection{Deployed services and Kafka topics}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\linewidth,height=124mm,keepaspectratio]{service-topics.pdf}
+\caption{Data milestone components and their Kafka topics (blue). Repeated labels refer to the same service or store.}
+\end{figure}
+
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{@{}L{51mm}Y@{}}
+\toprule
+\textbf{Kafka topic} & \textbf{Message contents}\\
+\midrule
+\texttt{depthscope.raw} & Original WebSocket payloads with venue and receipt timestamps, connection events and one clock tick per second.\\
+\texttt{depthscope.frames} & One-second batches of book levels, status and instrument increments.\\
+\texttt{depthscope.progress} & Stage name and latest processed or stored event second.\\
+\texttt{depthscope.resync} & Venue and request second for a fresh snapshot.\\
+\texttt{depthscope.checkpoints} & Saved processor and book state plus the next raw Kafka offset.\\
+\texttt{depthscope.replay.<run\_id>} & Archived events and original ticks in recorded order for one run.\\
+\bottomrule
+\end{tabularx}\par
+}
+
 \section{Planned analytical approach and presentation}
 The planned regression task is to predict visible USD liquidity 60 seconds ahead for each venue, asset and trade side. The target will sum asks up to 0.10\% above the future midpoint for buying, or bids down to 0.10\% below it for selling.
 
